@@ -1,0 +1,32 @@
+name: Commit Summary Bot
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Compute diff
+        run: |
+          echo "DIFF<<EOF" >> $GITHUB_ENV
+          git diff HEAD~1 HEAD >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Summarize and send
+        run: python scripts/summarize.py
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
