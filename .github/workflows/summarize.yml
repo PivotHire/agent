@@ -1,4 +1,4 @@
-name: Commit Summary Bot
+name: PivotHire Summary
 
 on:
   push:
@@ -6,27 +6,25 @@ on:
   pull_request:
 
 jobs:
-  summarize:
+  notify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - run: pip install -r requirements.txt
-
-      - name: Compute diff
+      - name: Send diff to PivotHire
         run: |
-          echo "DIFF<<EOF" >> $GITHUB_ENV
-          git diff HEAD~1 HEAD >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-      - name: Summarize and send
-        run: python scripts/summarize.py
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          DIFF=$(git diff HEAD~1 HEAD)
+          curl -sf -X POST "${{ secrets.PIVOTHIRE_URL }}/webhook" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.PIVOTHIRE_TOKEN }}" \
+            -d @- <<EOF
+          {
+            "diff": $(echo "$DIFF" | jq -Rs .),
+            "repo": "${{ github.repository }}",
+            "commit_sha": "${{ github.sha }}",
+            "author": "${{ github.actor }}",
+            "branch": "${{ github.ref_name }}"
+          }
+          EOF

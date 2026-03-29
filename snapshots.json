@@ -1,0 +1,62 @@
+{
+  "3aa11a7c65a28c408c94544253fb8f1509d37065": {
+    "timestamp": "2026-03-08T03:28:58.507635+00:00",
+    "files": {
+      "rag_pipeline/chunker.py": [
+        {
+          "name": "@dataclass",
+          "type": "code_block",
+          "lines": 11
+        },
+        {
+          "name": "class Chunker:",
+          "type": "class",
+          "lines": 422
+        },
+        {
+          "name": "def save_chunks(chunks: List[CodeChunk], output_path: Path):",
+          "type": "function",
+          "lines": 12
+        },
+        {
+          "name": "def main():",
+          "type": "function",
+          "lines": 48
+        }
+      ],
+      "rag_pipeline/chroma.py": [
+        {
+          "name": "def insert_to_chroma(results, collection_name=\"code_chunks\", db_path=\"./my_chroma_db\"):",
+          "type": "function",
+          "lines": 56
+        }
+      ],
+      "rag_pipeline/conflict_processor.py": [
+        {
+          "name": "def chunk_and_embed_conflicts(",
+          "type": "function",
+          "lines": 139
+        },
+        {
+          "name": "def save_conflict_results(results: List[Dict], output_path: Path):",
+          "type": "function",
+          "lines": 44
+        },
+        {
+          "name": "def load_conflict_data(json_path: Path) -> List[Dict]:",
+          "type": "function",
+          "lines": 12
+        },
+        {
+          "name": "def main():",
+          "type": "function",
+          "lines": 44
+        }
+      ]
+    }
+  },
+  "a2847fb51399f55416cc65803d7aa7183a31b7f1": {
+    "timestamp": "2026-03-16T03:53:31.478531+00:00",
+    "files": {}
+  }
+}

@@ -14,7 +14,31 @@ from typing import List, Dict, Set, Optional
 from dataclasses import dataclass, asdict
 from collections import defaultdict
 
-import tree_sitter_languages as tsl
+from tree_sitter import Language, Parser
+import tree_sitter_python
+import tree_sitter_javascript
+import tree_sitter_typescript
+import tree_sitter_go
+import tree_sitter_rust
+import tree_sitter_java
+import tree_sitter_cpp
+import tree_sitter_c
+import tree_sitter_ruby
+import tree_sitter_php
+
+_LANG_MODULES = {
+    "python": tree_sitter_python,
+    "javascript": tree_sitter_javascript,
+    "typescript": tree_sitter_typescript,
+    "tsx": tree_sitter_typescript,
+    "go": tree_sitter_go,
+    "rust": tree_sitter_rust,
+    "java": tree_sitter_java,
+    "cpp": tree_sitter_cpp,
+    "c": tree_sitter_c,
+    "ruby": tree_sitter_ruby,
+    "php": tree_sitter_php,
+}
 
 try:
     import orjson
@@ -198,7 +222,10 @@ class Chunker:
             lang_name = config["language"]
             if lang_name not in self.parsers:
                 try:
-                    parser = tsl.get_parser(lang_name)
+                    mod = _LANG_MODULES[lang_name]
+                    lang_func = mod.language_tsx if lang_name == "tsx" else mod.language
+                    language = Language(lang_func())
+                    parser = Parser(language)
                     self.parsers[lang_name] = parser
                     print(f"  Loaded parser for {lang_name}")
                 except Exception as e:
