@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from chunker import Chunker
+from archive.chunker import Chunker
 
 _chunker = Chunker()
 

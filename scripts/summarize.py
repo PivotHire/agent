@@ -1,52 +1,64 @@
-from google import genai
+import json
+from openai import OpenAI
 
 MAX_DIFF_CHARS = 30_000
 
 PROMPT = """\
-You are a code reviewer. Summarize this git diff in 3-5 bullet points.
-Focus on: what changed, why it likely changed, and anything risky.
-Be concise.
+You are a code reviewer tracking progress on a project.
+
+<goal>
+{goal}
+</goal>
+
+<previous_summaries>
+{previous_summaries}
+</previous_summaries>
 
 <diff>
 {diff}
-</diff>"""
+</diff>
+
+Respond in JSON with two keys:
+- "diff_summary": 3-5 bullet points on what changed, why it likely changed, and anything risky.
+- "goal_summary": 1-2 sentences on how this commit moves toward (or away from) the overarching goal, referencing previous work where relevant. If no goal is set, set this to null."""
 
 
-def summarize(diff, api_key):
-    """Send a diff to Gemini and return a summary string."""
+def summarize(diff, api_key, goal=None, previous_summaries=None):
+    """Send a diff to GPT with goal context and return a structured summary."""
     if len(diff) > MAX_DIFF_CHARS:
         diff = diff[:MAX_DIFF_CHARS] + "\n\n[truncated — diff exceeded 30k chars]"
 
-    client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=PROMPT.format(diff=diff),
-        # --- Tool calling (commented out for now — needs source files on server) ---
-        # config=types.GenerateContentConfig(
-        #     tools=[get_file_structure, get_function, get_context],
-        #     automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=False),
-        # ),
+    goal_text = goal or "No goal set."
+    if previous_summaries:
+        prev_text = "\n---\n".join(previous_summaries)
+    else:
+        prev_text = "No previous summaries."
+
+    client = OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
+        model="gpt-4.1-nano",
+        messages=[{"role": "user", "content": PROMPT.format(
+            diff=diff, goal=goal_text, previous_summaries=prev_text
+        )}],
+        response_format={"type": "json_object"},
     )
-    return response.text.strip()
+
+    result = json.loads(response.choices[0].message.content)
+
+    diff_summary = result.get("diff_summary", "")
+    if isinstance(diff_summary, list):
+        diff_summary = "\n".join(f"- {item}" if not item.startswith("-") else item for item in diff_summary)
+
+    goal_summary = result.get("goal_summary")
+    if isinstance(goal_summary, list):
+        goal_summary = " ".join(goal_summary)
+
+    return {
+        "diff_summary": diff_summary,
+        "goal_summary": goal_summary,
+    }
 
 
 # --- Commented out: tool-calling and snapshot logic ---
 # Requires source files on disk, which we don't have in the webhook-only workflow.
 # May be re-enabled in a future version (e.g. with GitHub App repo access).
-#
-# import re, sys, datetime, requests
-# from google.genai import types
-# sys.path.insert(0, os.path.dirname(__file__))
-# from snapshot import build_snapshot, get_latest_snapshot, save_snapshot, diff_snapshots
-# from ast_tools import get_file_structure, get_function, get_context
-#
-# def parse_changed_files(diff):
-#     return list(set(re.findall(r"diff --git a/.+ b/(.+)", diff)))
-#
-# def send_to_backend(summary, metadata):
-#     url = os.environ["WEBHOOK_URL"]
-#     r = requests.post(url, json={**metadata, "summary": summary}, timeout=10)
-#     r.raise_for_status()
-#
-# def main():
-#     ... (old GitHub Actions entry point — replaced by FastAPI server)

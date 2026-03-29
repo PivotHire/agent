@@ -1,4 +1,5 @@
+asyncpg
 fastapi
-uvicorn
+openai
 python-dotenv
-google-genai
+uvicorn
