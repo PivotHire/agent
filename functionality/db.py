@@ -4,7 +4,6 @@ import asyncpg
 async def create_pool(database_url):
     return await asyncpg.create_pool(database_url)
 
-
 async def init_db(pool):
     async with pool.acquire() as conn:
         await conn.execute("""
