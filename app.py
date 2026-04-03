@@ -136,7 +136,12 @@ async def gitea_webhook(request: Request):
         author = pr.get("user", {}).get("login", "unknown")
 
         diff = await gitea.get_pr_diff(owner, repo_name, pr_number)
-        event_type = "pr"
+        if is_merged:
+            event_type = "pr_merged"
+        elif action == "opened":
+            event_type = "pr_opened"
+        else:
+            event_type = "pr_updated"
 
     else:
         return {"status": "ignored", "reason": f"Event '{event}' not handled"}

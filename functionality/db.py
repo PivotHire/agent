@@ -17,7 +17,7 @@ async def init_db(pool):
             CREATE TABLE IF NOT EXISTS checkpoints (
                 id SERIAL PRIMARY KEY,
                 repo TEXT NOT NULL,
-                type TEXT NOT NULL CHECK (type IN ('pr', 'push')),
+                type TEXT NOT NULL CHECK (type IN ('pr_opened', 'pr_merged', 'pr_updated', 'push')),
                 pr_number INTEGER,
                 pr_title TEXT,
                 commit_sha TEXT NOT NULL,
