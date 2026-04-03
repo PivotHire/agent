@@ -123,10 +123,12 @@ async def gitea_webhook(request: Request):
 
     elif event == "pull_request":
         action = payload.get("action", "")
-        if action not in ("opened", "synchronize", "reopened"):
-            return {"status": "ignored", "reason": f"PR action '{action}' skipped"}
-
         pr = payload["pull_request"]
+
+        # Process: opened, updated, reopened, or merged
+        is_merged = action == "closed" and pr.get("merged", False)
+        if action not in ("opened", "synchronize", "synchronized", "reopened") and not is_merged:
+            return {"status": "ignored", "reason": f"PR action '{action}' skipped"}
         pr_number = pr["number"]
         pr_title = pr.get("title", "")
         commit_sha = pr["head"]["sha"]
