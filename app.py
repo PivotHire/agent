@@ -142,21 +142,32 @@ async def gitea_webhook(request: Request):
         return {"status": "ignored", "reason": f"Event '{event}' not handled"}
 
     # Summarize with context
-    goal = await get_goal(pool, repo_full)
-    recent = await get_recent_summaries(pool, repo_full, limit=5)
-    result = summarize(diff, api_key=OPENAI_API_KEY, goal=goal, previous_summaries=recent)
+    try:
+        goal = await get_goal(pool, repo_full)
+        recent = await get_recent_summaries(pool, repo_full, limit=5)
+        logger.warning("Fetched diff length=%d, calling summarize...", len(diff))
+        result = summarize(diff, api_key=OPENAI_API_KEY, goal=goal, previous_summaries=recent)
+        logger.warning("Summarize result: %s", result)
+    except Exception as e:
+        logger.exception("Summarize failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"Summarize failed: {e}")
 
-    checkpoint_id = await upsert_checkpoint(pool, {
-        "repo": repo_full,
-        "type": event_type,
-        "pr_number": pr_number,
-        "pr_title": pr_title,
-        "commit_sha": commit_sha,
-        "author": author,
-        "branch": branch,
-        "diff_summary": result["diff_summary"],
-        "goal_summary": result.get("goal_summary"),
-    })
+    try:
+        checkpoint_id = await upsert_checkpoint(pool, {
+            "repo": repo_full,
+            "type": event_type,
+            "pr_number": pr_number,
+            "pr_title": pr_title,
+            "commit_sha": commit_sha,
+            "author": author,
+            "branch": branch,
+            "diff_summary": result["diff_summary"],
+            "goal_summary": result.get("goal_summary"),
+        })
+        logger.warning("Saved checkpoint id=%s", checkpoint_id)
+    except Exception as e:
+        logger.exception("upsert_checkpoint failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"DB insert failed: {e}")
 
     return {"status": "ok", "checkpoint_id": checkpoint_id, **result}
 
