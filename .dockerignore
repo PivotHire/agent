@@ -1,0 +1,6 @@
+.git
+.env
+archive
+snapshots.json
+__pycache__
+*.pyc

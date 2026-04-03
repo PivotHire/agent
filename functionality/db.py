@@ -1,3 +1,4 @@
+import uuid
 import asyncpg
 
 
@@ -28,6 +29,16 @@ async def init_db(pool):
                 updated_at TIMESTAMPTZ DEFAULT now(),
                 UNIQUE (repo, type, pr_number)
             );
+            CREATE TABLE IF NOT EXISTS repo_tokens (
+                id SERIAL PRIMARY KEY,
+                token TEXT NOT NULL UNIQUE,
+                repo TEXT NOT NULL,
+                label TEXT,
+                created_at TIMESTAMPTZ DEFAULT now(),
+                expires_at TIMESTAMPTZ
+            );
+            CREATE INDEX IF NOT EXISTS idx_repo_tokens_token
+                ON repo_tokens (token);
         """)
 
 
@@ -93,3 +104,46 @@ async def get_checkpoints_by_ids(pool, checkpoint_ids):
             "SELECT * FROM checkpoints WHERE id = ANY($1) ORDER BY updated_at DESC",
             checkpoint_ids)
         return [dict(r) for r in rows]
+
+
+# --- Repo token management ---
+
+async def create_repo_token(pool, repo, label=None, expires_at=None):
+    token = uuid.uuid4().hex
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO repo_tokens (token, repo, label, expires_at)
+               VALUES ($1, $2, $3, $4)""",
+            token, repo, label, expires_at,
+        )
+    return {"token": token, "repo": repo, "label": label}
+
+
+async def validate_repo_token(pool, token):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """SELECT repo FROM repo_tokens
+               WHERE token = $1
+                 AND (expires_at IS NULL OR expires_at > now())""",
+            token,
+        )
+        return row["repo"] if row else None
+
+
+async def list_repo_tokens(pool, repo=None):
+    async with pool.acquire() as conn:
+        if repo:
+            rows = await conn.fetch(
+                "SELECT id, token, repo, label, created_at, expires_at FROM repo_tokens WHERE repo = $1 ORDER BY created_at DESC",
+                repo)
+        else:
+            rows = await conn.fetch(
+                "SELECT id, token, repo, label, created_at, expires_at FROM repo_tokens ORDER BY created_at DESC")
+        return [dict(r) for r in rows]
+
+
+async def revoke_repo_token(pool, token):
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM repo_tokens WHERE token = $1", token)
+        return result == "DELETE 1"
