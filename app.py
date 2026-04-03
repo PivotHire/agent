@@ -93,6 +93,7 @@ async def gitea_webhook(request: Request):
 
     event = request.headers.get("X-Gitea-Event", "")
     payload = await request.json()
+    logger.warning("Webhook event=%s payload=%s", event, payload)
     pool = app.state.pool
     gitea: GiteaClient = app.state.gitea
 
@@ -106,18 +107,14 @@ async def gitea_webhook(request: Request):
         branch = ref.removeprefix("refs/heads/")
         author = payload.get("pusher", {}).get("login", "unknown")
 
-        # Fetch diff from Gitea API
-        if before == ZERO_SHA:
-            # New branch / initial push — fetch individual commit diffs
-            parts = []
-            for c in payload.get("commits", []):
-                try:
-                    parts.append(await gitea.get_commit_diff(owner, repo_name, c["id"]))
-                except Exception:
-                    logger.warning("Failed to fetch diff for commit %s", c["id"])
-            diff = "\n".join(parts)
-        else:
-            diff = await gitea.get_compare_diff(owner, repo_name, before, after)
+        # Fetch diff from Gitea API — pull each commit individually
+        parts = []
+        for c in payload.get("commits", []):
+            try:
+                parts.append(await gitea.get_commit_diff(owner, repo_name, c["id"]))
+            except Exception:
+                logger.warning("Failed to fetch diff for commit %s", c["id"])
+        diff = "\n".join(parts)
 
         event_type = "push"
         pr_number = None

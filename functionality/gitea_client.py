@@ -32,7 +32,7 @@ class GiteaClient:
     async def get_pr_diff(self, owner: str, repo: str, index: int) -> str:
         async with httpx.AsyncClient() as client:
             resp = await client.get(
-                f"{self.base_url}/repos/{owner}/{repo}/pulls/{index}.diff",
+                f"{self.base_url}/api/v1/repos/{owner}/{repo}/pulls/{index}.diff",
                 headers=self.headers, timeout=30.0,
             )
             resp.raise_for_status()
